@@ -3,6 +3,7 @@ from discord.ext import commands
 import requests
 import json
 import os
+from bs4 import BeautifulSoup
 
 # Define your bot's intents
 intents = discord.Intents.default()
@@ -20,25 +21,48 @@ async def on_ready():
     print(f'Logged in as {bot.user.name}')
 
 @bot.command()
-async def scrape(ctx, url):
+async def scrape(ctx, source, url):
     try:
-        # Make a GET request to the URL and parse JSON data
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for non-200 status codes
-        json_data = response.json()
+        if source == "json":
+            # Scraping JSON data
+            response = requests.get(url)
+            response.raise_for_status()
+            json_data = response.json()
 
-        # Convert the JSON data to a pretty-printed string for a code block
-        json_str = json.dumps(json_data, indent=4)
-        code_block = f"```json\n{json_str}\n```"
+            # Save the JSON data to a file
+            filename = os.path.join(DATA_DIR, "scraped_data.json")
+            with open(filename, "w", encoding="utf-8") as file:
+                json.dump(json_data, file, indent=4)
 
-        # Save the JSON data to a file
-        filename = os.path.join(DATA_DIR, "scraped_data.json")
-        with open(filename, "w", encoding="utf-8") as file:
-            json.dump(json_data, file, indent=4)
+            # Send the JSON data file to the Discord channel
+            await ctx.send(file=discord.File(filename))
+        
+        elif source == "html":
+            # Scraping data from an HTML page
+            response = requests.get(url)
+            response.raise_for_status()
+            html_content = response.text
 
-        # Send the JSON data as a code block and the file
-        await ctx.send(code_block)
-        await ctx.send(file=discord.File(filename))
+            # Parse the HTML using Beautiful Soup
+            soup = BeautifulSoup(html_content, "html.parser")
+
+            # Extract data from the HTML (modify this as needed)
+            data = soup.find("div", class_="content").text.strip()
+
+            # Send the extracted data as a message
+            await ctx.send(data)
+        
+        elif source == "api":
+            # Scraping data from an API
+            response = requests.get(url)
+            response.raise_for_status()
+            api_data = response.json()
+
+            # Send the API data as a message
+            await ctx.send(f"API Data:\n```json\n{json.dumps(api_data, indent=4)}\n```")
+
+        else:
+            await ctx.send("Invalid source. Supported sources: json, html, api")
 
     except requests.exceptions.RequestException as e:
         await ctx.send(f"An error occurred while making the request: {e}")
