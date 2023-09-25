@@ -1,23 +1,35 @@
 import os
-import hashlib
+import requests
+from bs4 import BeautifulSoup
 from discord.ext import commands
 from thorn import Thorn
 import discord
 
-intents = discord.Intents.default()
-intents.typing = False
-intents.presences = False
-
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='!')
 
 @bot.command()
 async def scrape(ctx, url):
-    scraper = Thorn() 
-    data = scraper.scrape(url)
-    await ctx.send(data)
 
-# Retrieve the bot token from the environment variable
-BOT_TOKEN = os.environ.get("DISCORD_TOKEN")
+    try:
+        # Initialize Thorn scraper
+        scraper = Thorn()
+        
+        # Use Thorn to scrape page
+        data = scraper.scrape(url)
+        
+        # Extract additional data with BeautifulSoup
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        titles = [h2.text for h2 in soup.find_all('h2')]
+        
+        # Build response string
+        content = f"**Scraped data:**\n{data}\n\n**Page titles:**\n"
+        content += "\n".join(titles)
+        
+        await ctx.send(content)
 
-# Run the bot with the retrieved token
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+        
+BOT_TOKEN = os.environ.get("DISCORD_TOKEN")    
 bot.run(BOT_TOKEN)
