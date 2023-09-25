@@ -1,10 +1,11 @@
 import os
+import hashlib
 from discord.ext import commands
 from thorn import Thorn
 import discord
 
 intents = discord.Intents.default()
-intents.typing = False  # You can adjust these as needed
+intents.typing = False
 intents.presences = False
 
 bot = commands.Bot(command_prefix='!', intents=intents)
