@@ -1,9 +1,13 @@
-# bot.py
-
+import os
 from discord.ext import commands
 from thorn import Thorn
+import discord
 
-bot = commands.Bot(command_prefix='!')
+intents = discord.Intents.default()
+intents.typing = False  # You can adjust these as needed
+intents.presences = False
+
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.command()
 async def scrape(ctx, url):
