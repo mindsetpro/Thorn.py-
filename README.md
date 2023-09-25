@@ -1,2 +1,2 @@
 # Thorn.py-
-Custom API wrapper for discord
+Custom JSON data webscrapper
