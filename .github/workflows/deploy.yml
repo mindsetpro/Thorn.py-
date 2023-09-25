@@ -21,11 +21,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-        working-directory: ./app.py # Specify your bot's directory
+        working-directory: app.py # Specify your bot's directory
 
       - name: Run the bot
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
         run: |
           python app.py
-        working-directory: ./app.py
+        working-directory: app.py
