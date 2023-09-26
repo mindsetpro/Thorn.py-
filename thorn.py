@@ -1,15 +1,6 @@
-"""
-thorn.py - A powerful web scraper.
-"""
-
+import json
+import logging 
 import requests
-from bs4 import BeautifulSoup
-import json 
-import csv
-import logging
-from urllib.parse import urlparse, urlencode
-from cachetools import LRUCache
-from fake_useragent import UserAgent
 
 logger = logging.getLogger('thorn')
 
@@ -18,73 +9,64 @@ class Thorn:
     def __init__(self, config=None):
         self.config = config or {}
         self.init_config()
-        self.cache = LRUCache(maxsize=self.config['CACHE_SIZE'])
+        self.cache = {}
         self.session = requests.Session()
-        self.user_agent = UserAgent()
 
     def init_config(self):
-        self.config['CACHE_SIZE'] = self.config.get('CACHE_SIZE', 500)
+        self.config['CACHE_SIZE'] = self.config.get('CACHE_SIZE', 500)    
 
     def scrape(self, url):
-        """Scrape data from a URL."""
+        """Scrape JSON data from a URL"""
         
-        # Check cache 
-        cache_key = hashlib.sha1(url.encode('utf-8')).hexdigest()
-        if cache_key in self.cache:
+        # Check cache
+        if url in self.cache:
             logger.info(f'Cache hit for {url}')
-            return self.cache[cache_key]
-
-        # Rotate user agent
-        headers = {'User-Agent': self.user_agent.random}
+            return self.cache[url]
         
         # Make request
         logger.info(f'Scraping {url}')
         try:
-            resp = self.session.get(url, headers=headers)
+            resp = self.session.get(url)
             resp.raise_for_status()
         except Exception as e:
             logger.error(f'Error scraping {url}: {e}')
             return None
 
-        # Parse response
-        page = BeautifulSoup(resp.text, 'html.parser')
+        # Extract JSON data
+        data = self.extract_json(url, resp.text)
         
-        # Extract data
-        data = self.extract_data(url, page)
-        
-        # Cache and return
-        self.cache[cache_key] = data
+        # Add to cache and return
+        self.cache[url] = data
         return data
 
-    def extract_data(self, url, page):
-        """Extract data from page based on url"""
-        if 'json' in url:
-            return self.parse_json(page)
-        elif 'csv' in url:
-            return self.parse_csv(page)
-        else:
-            return self.parse_html(page)
+    def extract_json(self, url, content):
+        """Extract JSON data from content"""
+        try:
+            data = json.loads(content)
+            if data:
+                return data
+            else:
+                logger.warning(f'No JSON data found in {url}')
+                return None
+        except Exception as e:
+            logger.error(f'Error parsing JSON from {url}: {e}')
+            return None
+            
+def scrape_json(url):
+    """Convenience function to scrape JSON from a URL"""
+    scraper = Thorn()
+    return scraper.scrape(url)
 
-    def parse_json(self, page):
-        """Extract JSON data"""
-        script = page.find('script', {'type': 'application/json'})
-        if script:
-            data = json.loads(script.text)
-            return data
-    
-    def parse_csv(self, page):
-        """Extract CSV data"""
-        text = page.find('pre').text
-        return list(csv.reader(text.splitlines()))
-
-    def parse_html(self, page):
-        """Extract raw HTML"""
-        return page.prettify()
+def pretty_json(data):
+    """Pretty print JSON with indentation"""
+    return json.dumps(data, indent=4) 
 
 if __name__ == '__main__':
     import sys
-    url = sys.argv[1]
-
-    scraper = Thorn()
-    data = scraper.scrape(url)
-    print(data)
+    url = sys.argv[1]  
+    data = scrape_json(url)
+    
+    if data:
+        print(pretty_json(data))
+    else:
+        print('Failed to scrape JSON data')
